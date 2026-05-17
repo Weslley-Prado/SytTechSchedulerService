@@ -1,0 +1,151 @@
+<?xml version="1.0"?>
+<!DOCTYPE module PUBLIC
+        "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN"
+        "https://checkstyle.org/dtds/configuration_1_3.dtd">
+
+<!--
+    Checkstyle config — syttech.portal
+    Baseado no Google Java Style, com ajustes para projeto em fase inicial.
+    Referência: https://checkstyle.org/checks.html
+-->
+<module name="Checker">
+    <property name="charset" value="UTF-8"/>
+    <property name="severity" value="warning"/>
+
+    <!-- Filtro: ignora arquivos gerados (OpenAPI, MapStruct, Lombok) -->
+    <module name="BeforeExecutionExclusionFileFilter">
+        <property name="fileNamePattern" value=".*[\\/]generated-sources[\\/].*"/>
+    </module>
+
+    <!-- Supressões externas -->
+    <module name="SuppressionFilter">
+        <property name="file" value="${config_loc}/suppressions.xml"/>
+        <property name="optional" value="true"/>
+    </module>
+
+    <!-- ======================== FILE-LEVEL CHECKS ======================== -->
+
+    <!-- Tamanho máximo de arquivo: 500 linhas (aviso se ultrapassar) -->
+    <module name="FileLength">
+        <property name="max" value="500"/>
+    </module>
+
+    <!-- Sem TABs — apenas espaços -->
+    <module name="FileTabCharacter">
+        <property name="eachLine" value="true"/>
+    </module>
+
+    <!-- Linha não pode ter mais de 120 caracteres -->
+    <module name="LineLength">
+        <property name="max" value="120"/>
+        <!-- Ignora imports e URLs longos -->
+        <property name="ignorePattern" value="^(package |import |.*https?://).*$"/>
+    </module>
+
+    <!-- Arquivo deve terminar com nova linha -->
+    <module name="NewlineAtEndOfFile"/>
+
+    <!-- ======================== TREE WALKER (AST) ======================== -->
+    <module name="TreeWalker">
+
+        <!-- Ignora código gerado por annotation processors -->
+        <module name="SuppressWarningsHolder"/>
+
+        <!-- ── IMPORTS ─────────────────────────────────────────────── -->
+
+        <!-- Proíbe import com wildcard (ex: import java.util.*) -->
+        <module name="AvoidStarImport"/>
+
+        <!-- Proíbe imports não utilizados -->
+        <module name="UnusedImports"/>
+
+        <!-- Proíbe imports redundantes -->
+        <module name="RedundantImport"/>
+
+        <!-- ── NAMING (convenções de nomes) ────────────────────────── -->
+
+        <!-- Classes: PascalCase -->
+        <module name="TypeName"/>
+
+        <!-- Métodos e variáveis: camelCase -->
+        <module name="MethodName"/>
+        <module name="LocalVariableName"/>
+        <module name="MemberName"/>
+        <module name="ParameterName"/>
+
+        <!-- Constantes: UPPER_SNAKE_CASE -->
+        <module name="ConstantName"/>
+
+        <!-- Pacotes: tudo minúsculo -->
+        <module name="PackageName">
+            <property name="format" value="^[a-z]+(\.[a-z][a-z0-9\-]*)*$"/>
+        </module>
+
+        <!-- ── CODE QUALITY (qualidade de código) ──────────────────── -->
+
+        <!-- Blocos vazios (catch vazio, if vazio, etc.) -->
+        <module name="EmptyBlock">
+            <property name="option" value="TEXT"/>
+        </module>
+
+        <!-- Sempre usar chaves em if/else/for/while/do -->
+        <module name="NeedBraces"/>
+
+        <!-- Chave de abertura na mesma linha -->
+        <module name="LeftCurly"/>
+
+        <!-- Chave de fechamento na própria linha -->
+        <module name="RightCurly"/>
+
+        <!-- Proíbe variáveis de instância públicas -->
+        <module name="VisibilityModifier">
+            <property name="allowPublicFinalFields" value="true"/>
+            <property name="protectedAllowed" value="true"/>
+        </module>
+
+        <!-- Cada variável declarada separadamente -->
+        <module name="MultipleVariableDeclarations"/>
+
+        <!-- Um statement por linha -->
+        <module name="OneStatementPerLine"/>
+
+        <!-- Proíbe equals() em String literal à direita: use "str".equals(var) -->
+        <module name="EqualsHashCode"/>
+
+        <!-- Simplificar expressões booleanas -->
+        <module name="SimplifyBooleanExpression"/>
+        <module name="SimplifyBooleanReturn"/>
+
+        <!-- Proíbe blocos aninhados desnecessários -->
+        <module name="AvoidNestedBlocks"/>
+
+        <!-- ── WHITESPACE ──────────────────────────────────────────── -->
+
+        <module name="WhitespaceAround">
+            <!-- Permite {} vazio em records, interfaces, construtores, etc.
+                 Resolve conflito com Google Java Format que formata como {} sem espaço -->
+            <property name="allowEmptyConstructors" value="true"/>
+            <property name="allowEmptyMethods" value="true"/>
+            <property name="allowEmptyTypes" value="true"/>
+            <property name="allowEmptyLoops" value="true"/>
+            <property name="allowEmptyLambdas" value="true"/>
+            <property name="allowEmptyCatches" value="true"/>
+        </module>
+        <module name="WhitespaceAfter"/>
+        <module name="NoWhitespaceBefore"/>
+        <module name="GenericWhitespace"/>
+
+        <!-- ── MODIFIER ORDER ──────────────────────────────────────── -->
+
+        <!-- Ordem dos modificadores: public static final, não final static public -->
+        <module name="ModifierOrder"/>
+        <module name="RedundantModifier"/>
+
+    </module>
+
+    <!-- Filtro de supressão via @SuppressWarnings -->
+    <module name="SuppressWarningsFilter"/>
+
+</module>
+
+

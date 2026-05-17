@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<!DOCTYPE suppressions PUBLIC
+        "-//Checkstyle//DTD SuppressionFilter Configuration 1.2//EN"
+        "https://checkstyle.org/dtds/suppressions_1_2.dtd">
+
+<!--
+    Suppressions — supressões de regras para arquivos específicos.
+    Ex.: código gerado pelo OpenAPI/Lombok que não controlamos.
+-->
+<suppressions>
+    <!-- Código gerado pelo OpenAPI Generator -->
+    <suppress files="[\\/]generated-sources[\\/]" checks=".*"/>
+
+    <!-- Arquivos de teste: relaxar regras de visibilidade e Javadoc -->
+    <suppress files="[\\/]test[\\/]" checks="VisibilityModifier"/>
+    <suppress files="[\\/]test[\\/]" checks="JavadocMethod"/>
+
+    <!-- Application.java é bootstrap, não precisa de Javadoc -->
+    <suppress files="Application\.java" checks="Javadoc.*"/>
+</suppressions>
+

@@ -1,0 +1,64 @@
+<?xml version="1.0"?>
+<!--
+    PMD Ruleset customizado — syttech.portal
+    =========================================
+    Inclui as categorias principais de regras, mas EXCLUI regras que geram
+    muito ruído em projetos com Lombok, records, e Spring Boot.
+
+    Referência: https://pmd.github.io/latest/pmd_rules_java.html
+-->
+<ruleset name="SytTech Portal Ruleset"
+         xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0
+                             https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
+
+    <description>Regras PMD ajustadas para Spring Boot + Lombok + records</description>
+
+    <!-- ═══════════════ BEST PRACTICES ═══════════════ -->
+    <rule ref="category/java/bestpractices.xml">
+        <!-- Use-cases com um método são funcionais por design -->
+        <exclude name="ImplicitFunctionalInterface"/>
+        <!-- Acoplamento de pacotes: Spring Modulith cuida disso -->
+        <exclude name="LoosePackageCoupling"/>
+        <!-- PreserveStackTrace: exceções de domínio encapsulam a causa quando relevante -->
+        <exclude name="PreserveStackTrace"/>
+    </rule>
+
+    <!-- ═══════════════ CODE STYLE ═══════════════ -->
+    <rule ref="category/java/codestyle.xml">
+        <exclude name="MethodArgumentCouldBeFinal"/>
+        <exclude name="LocalVariableCouldBeFinal"/>
+        <exclude name="ShortVariable"/>
+        <exclude name="LongVariable"/>
+        <exclude name="AtLeastOneConstructor"/>
+        <exclude name="CommentDefaultAccessModifier"/>
+        <exclude name="OnlyOneReturn"/>
+        <exclude name="UseExplicitTypes"/>
+    </rule>
+
+    <!-- ═══════════════ DESIGN ═══════════════ -->
+    <rule ref="category/java/design.xml">
+        <exclude name="UseUtilityClass"/>
+        <exclude name="LawOfDemeter"/>
+        <exclude name="DataClass"/>
+        <exclude name="ExcessiveImports"/>
+        <!-- UseObjectForClearerAPI: métodos com muitos parâmetros são
+             mapeamentos diretos do domínio (create/update) -->
+        <exclude name="UseObjectForClearerAPI"/>
+        <!-- ExcessiveParameterList: idem -->
+        <exclude name="ExcessiveParameterList"/>
+    </rule>
+
+    <!-- ═══════════════ ERROR PRONE ═══════════════ -->
+    <rule ref="category/java/errorprone.xml">
+        <exclude name="MissingSerialVersionUID"/>
+        <!-- Literais duplicadas em DTOs/mappers são aceitáveis -->
+        <exclude name="AvoidDuplicateLiterals"/>
+    </rule>
+
+    <!-- ═══════════════ PERFORMANCE ═══════════════ -->
+    <rule ref="category/java/performance.xml"/>
+
+</ruleset>
+
