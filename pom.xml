@@ -162,8 +162,8 @@
 						<goals><goal>generate</goal></goals>
 						<configuration>
 							<inputSpec>${project.basedir}/src/main/resources/contract/input/units-api.yaml</inputSpec>
-							<apiPackage>com.syttech.scheduler.adapter.input.web.units.api</apiPackage>
-							<modelPackage>com.syttech.scheduler.adapter.input.web.units.dto</modelPackage>
+							<apiPackage>com.syttech.syttech.scheduler.scheduler.adapter.input.web.units.api</apiPackage>
+							<modelPackage>com.syttech.syttech.scheduler.scheduler.adapter.input.web.units.dto</modelPackage>
 						</configuration>
 					</execution>
 					<execution>
@@ -172,8 +172,8 @@
 						<goals><goal>generate</goal></goals>
 						<configuration>
 							<inputSpec>${project.basedir}/src/main/resources/contract/input/availability-api.yaml</inputSpec>
-							<apiPackage>com.syttech.scheduler.adapter.input.web.availability.api</apiPackage>
-							<modelPackage>com.syttech.scheduler.adapter.input.web.availability.dto</modelPackage>
+							<apiPackage>com.syttech.syttech.scheduler.scheduler.adapter.input.web.availability.api</apiPackage>
+							<modelPackage>com.syttech.syttech.scheduler.scheduler.adapter.input.web.availability.dto</modelPackage>
 						</configuration>
 					</execution>
 					<execution>
@@ -182,8 +182,8 @@
 						<goals><goal>generate</goal></goals>
 						<configuration>
 							<inputSpec>${project.basedir}/src/main/resources/contract/input/appointments-api.yaml</inputSpec>
-							<apiPackage>com.syttech.scheduler.adapter.input.web.appointments.api</apiPackage>
-							<modelPackage>com.syttech.scheduler.adapter.input.web.appointments.dto</modelPackage>
+							<apiPackage>com.syttech.syttech.scheduler.scheduler.adapter.input.web.appointments.api</apiPackage>
+							<modelPackage>com.syttech.syttech.scheduler.scheduler.adapter.input.web.appointments.dto</modelPackage>
 						</configuration>
 					</execution>
 					<execution>
@@ -192,8 +192,8 @@
 						<goals><goal>generate</goal></goals>
 						<configuration>
 							<inputSpec>${project.basedir}/src/main/resources/contract/input/customers-api.yaml</inputSpec>
-							<apiPackage>com.syttech.scheduler.adapter.input.web.customers.api</apiPackage>
-							<modelPackage>com.syttech.scheduler.adapter.input.web.customers.dto</modelPackage>
+							<apiPackage>com.syttech.syttech.scheduler.scheduler.adapter.input.web.customers.api</apiPackage>
+							<modelPackage>com.syttech.syttech.scheduler.scheduler.adapter.input.web.customers.dto</modelPackage>
 						</configuration>
 					</execution>
 					<execution>
@@ -202,8 +202,8 @@
 						<goals><goal>generate</goal></goals>
 						<configuration>
 							<inputSpec>${project.basedir}/src/main/resources/contract/input/auth-api.yaml</inputSpec>
-							<apiPackage>com.syttech.scheduler.adapter.input.web.auth.api</apiPackage>
-							<modelPackage>com.syttech.scheduler.adapter.input.web.auth.dto</modelPackage>
+							<apiPackage>com.syttech.syttech.scheduler.scheduler.adapter.input.web.auth.api</apiPackage>
+							<modelPackage>com.syttech.syttech.scheduler.scheduler.adapter.input.web.auth.dto</modelPackage>
 						</configuration>
 					</execution>
 				</executions>
