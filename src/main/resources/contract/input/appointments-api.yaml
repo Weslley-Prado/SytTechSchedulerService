@@ -1,0 +1,240 @@
+openapi: 3.0.3
+info:
+  title: SytTech Scheduler - Appointments API
+  description: |
+    Gestao de pre-reservas (holds) e agendamentos confirmados.
+    Cobre os passos do fluxo: "Sistema cria pre-reserva temporaria",
+    "Preenche dados de confirmacao", "Sistema envia e-mail com codigo",
+    "FINALIZACAO" e operacoes de cancelamento/remarcacao.
+  version: 1.0.0
+servers:
+  - url: /api/v1
+tags:
+  - name: Holds
+    description: Pre-reservas temporarias com TTL.
+  - name: Appointments
+    description: Agendamentos confirmados.
+paths:
+  /appointments/holds:
+    post:
+      tags: [Holds]
+      operationId: createHold
+      summary: Cria uma pre-reserva temporaria.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateHoldRequest' }
+      responses:
+        '201':
+          description: Pre-reserva criada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HoldResponse' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+  /appointments/holds/{holdId}:
+    delete:
+      tags: [Holds]
+      operationId: releaseHold
+      summary: Libera (cancela) uma pre-reserva.
+      parameters:
+        - $ref: '#/components/parameters/HoldId'
+      responses:
+        '204': { description: Pre-reserva liberada. }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /appointments:
+    post:
+      tags: [Appointments]
+      operationId: confirmAppointment
+      summary: Confirma o agendamento a partir de uma pre-reserva.
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ConfirmAppointmentRequest' }
+      responses:
+        '201':
+          description: Agendamento confirmado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AppointmentResponse' }
+        '410': { $ref: '#/components/responses/Gone' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+  /appointments/{appointmentId}:
+    delete:
+      tags: [Appointments]
+      operationId: cancelAppointment
+      summary: Cancela um agendamento confirmado.
+      parameters:
+        - $ref: '#/components/parameters/AppointmentId'
+      responses:
+        '204': { description: Agendamento cancelado. }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+  /appointments/{appointmentId}/reschedule:
+    patch:
+      tags: [Appointments]
+      operationId: rescheduleAppointment
+      summary: Remarca um agendamento para um novo horario.
+      parameters:
+        - $ref: '#/components/parameters/AppointmentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RescheduleRequest' }
+      responses:
+        '200':
+          description: Agendamento remarcado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AppointmentResponse' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+  /appointments/{appointmentId}/resend-code:
+    post:
+      tags: [Appointments]
+      operationId: resendAppointmentCode
+      summary: Reenvia o e-mail com o codigo do agendamento.
+      parameters:
+        - $ref: '#/components/parameters/AppointmentId'
+      responses:
+        '202': { description: Reenvio agendado. }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+  /appointments/by-code/{code}:
+    get:
+      tags: [Appointments]
+      operationId: getAppointmentByCode
+      summary: Consulta um agendamento pelo codigo publico.
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Detalhes do agendamento.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AppointmentDetails' }
+        '404': { $ref: '#/components/responses/NotFound' }
+components:
+  parameters:
+    HoldId:
+      name: holdId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    AppointmentId:
+      name: appointmentId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+  responses:
+    NotFound:
+      description: Recurso nao encontrado.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    Conflict:
+      description: 'Conflito de estado (ex.: slot ja reservado).'
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    Gone:
+      description: Pre-reserva expirada.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    UnprocessableEntity:
+      description: Erro de validacao de dominio.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    TooManyRequests:
+      description: Rate limit atingido.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+  schemas:
+    CreateHoldRequest:
+      type: object
+      required: [unitId, serviceId, start]
+      properties:
+        unitId: { type: string, format: uuid }
+        serviceId: { type: string, format: uuid }
+        professionalId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Quando ausente/null, o backend escolhe qualquer profissional disponivel.
+        start: { type: string, format: date-time }
+    HoldResponse:
+      type: object
+      required: [holdId, professionalId, start, end, expiresAt]
+      properties:
+        holdId: { type: string, format: uuid }
+        professionalId: { type: string, format: uuid }
+        start: { type: string, format: date-time }
+        end: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
+    ConfirmAppointmentRequest:
+      type: object
+      required: [holdId]
+      properties:
+        holdId: { type: string, format: uuid }
+        customer:
+          $ref: '#/components/schemas/GuestCustomer'
+    GuestCustomer:
+      type: object
+      required: [fullName, email, phone]
+      properties:
+        fullName: { type: string }
+        email: { type: string, format: email }
+        phone: { type: string }
+        notes: { type: string, nullable: true }
+    RescheduleRequest:
+      type: object
+      properties:
+        holdId: { type: string, format: uuid, nullable: true }
+        start: { type: string, format: date-time, nullable: true }
+      description: Informar `holdId` (preferido) OU `start` para uma nova janela.
+    AppointmentResponse:
+      type: object
+      required: [appointmentId, code, status, start, end]
+      properties:
+        appointmentId: { type: string, format: uuid }
+        code: { type: string, example: ABC-1234 }
+        status: { $ref: '#/components/schemas/AppointmentStatus' }
+        start: { type: string, format: date-time }
+        end: { type: string, format: date-time }
+    AppointmentDetails:
+      allOf:
+        - $ref: '#/components/schemas/AppointmentResponse'
+        - type: object
+          properties:
+            unitId: { type: string, format: uuid }
+            serviceId: { type: string, format: uuid }
+            serviceName: { type: string }
+            professionalId: { type: string, format: uuid }
+            professionalName: { type: string }
+            customer:
+              $ref: '#/components/schemas/GuestCustomer'
+    AppointmentStatus:
+      type: string
+      enum: [CONFIRMED, CANCELLED, COMPLETED, NO_SHOW]
+    Problem:
+      type: object
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string }

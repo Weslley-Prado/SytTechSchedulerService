@@ -1,0 +1,80 @@
+openapi: 3.0.3
+info:
+  title: SytTech Scheduler - Availability API
+  description: |
+    Consulta de disponibilidade de horarios (slots) para um servico,
+    opcionalmente filtrando por profissional. Quando `professionalId` e omitido,
+    o backend retorna slots de qualquer profissional disponivel
+    (opcao "any available").
+  version: 1.0.0
+servers:
+  - url: /api/v1
+tags:
+  - name: Availability
+paths:
+  /availability:
+    get:
+      tags: [Availability]
+      operationId: getAvailability
+      summary: Consulta slots disponiveis.
+      parameters:
+        - name: unitId
+          in: query
+          required: true
+          schema: { type: string, format: uuid }
+        - name: serviceId
+          in: query
+          required: true
+          schema: { type: string, format: uuid }
+        - name: professionalId
+          in: query
+          schema: { type: string, format: uuid }
+          description: Opcional. Quando ausente, retorna slots de qualquer profissional.
+        - name: from
+          in: query
+          required: true
+          schema: { type: string, format: date-time }
+        - name: to
+          in: query
+          required: true
+          schema: { type: string, format: date-time }
+        - name: timezone
+          in: query
+          schema: { type: string, example: America/Sao_Paulo }
+      responses:
+        '200':
+          description: Lista de slots disponiveis.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AvailabilityResponse' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+components:
+  responses:
+    UnprocessableEntity:
+      description: Parametros invalidos.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+  schemas:
+    AvailabilityResponse:
+      type: object
+      required: [slots]
+      properties:
+        slots:
+          type: array
+          items: { $ref: '#/components/schemas/AvailabilitySlot' }
+    AvailabilitySlot:
+      type: object
+      required: [start, end]
+      properties:
+        start: { type: string, format: date-time }
+        end: { type: string, format: date-time }
+        professionalId: { type: string, format: uuid, nullable: true }
+    Problem:
+      type: object
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string }

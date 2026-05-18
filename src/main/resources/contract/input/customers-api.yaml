@@ -1,0 +1,144 @@
+openapi: 3.0.3
+info:
+  title: SytTech Scheduler - Customers API
+  description: |
+    Cadastro de clientes, verificacao de e-mail e consulta dos proprios
+    agendamentos. Cobre o ramo "NAO" da decisao "Cliente tem cadastro?".
+  version: 1.0.0
+servers:
+  - url: /api/v1
+tags:
+  - name: Customers
+paths:
+  /customers:
+    post:
+      tags: [Customers]
+      operationId: registerCustomer
+      summary: Cria uma nova conta de cliente.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterCustomerRequest' }
+      responses:
+        '201':
+          description: Cliente criado. E-mail de verificacao enviado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CustomerResponse' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+  /customers/verify-email:
+    post:
+      tags: [Customers]
+      operationId: verifyCustomerEmail
+      summary: Confirma o e-mail via token enviado no cadastro.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VerifyEmailRequest' }
+      responses:
+        '204': { description: E-mail verificado. }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+  /customers/me/appointments:
+    get:
+      tags: [Customers]
+      operationId: listMyAppointments
+      summary: Lista os agendamentos do cliente autenticado.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema: { $ref: '#/components/schemas/AppointmentStatus' }
+        - name: from
+          in: query
+          schema: { type: string, format: date-time }
+        - name: to
+          in: query
+          schema: { type: string, format: date-time }
+      responses:
+        '200':
+          description: Lista de agendamentos do cliente.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/AppointmentSummary' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  responses:
+    NotFound:
+      description: Recurso nao encontrado.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    Conflict:
+      description: 'Conflito (ex.: e-mail ja cadastrado).'
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    Unauthorized:
+      description: Nao autenticado.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    UnprocessableEntity:
+      description: Erro de validacao de dominio.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+  schemas:
+    RegisterCustomerRequest:
+      type: object
+      required: [fullName, email, phone, password, acceptTerms]
+      properties:
+        fullName: { type: string }
+        email: { type: string, format: email }
+        phone: { type: string }
+        password: { type: string, format: password, minLength: 8 }
+        acceptTerms: { type: boolean }
+    CustomerResponse:
+      type: object
+      required: [id, fullName, email]
+      properties:
+        id: { type: string, format: uuid }
+        fullName: { type: string }
+        email: { type: string, format: email }
+        phone: { type: string }
+        emailVerified: { type: boolean }
+    VerifyEmailRequest:
+      type: object
+      required: [token]
+      properties:
+        token: { type: string }
+    AppointmentSummary:
+      type: object
+      required: [appointmentId, code, status, start, end, serviceName]
+      properties:
+        appointmentId: { type: string, format: uuid }
+        code: { type: string }
+        status: { $ref: '#/components/schemas/AppointmentStatus' }
+        start: { type: string, format: date-time }
+        end: { type: string, format: date-time }
+        serviceName: { type: string }
+        professionalName: { type: string }
+        unitName: { type: string }
+    AppointmentStatus:
+      type: string
+      enum: [CONFIRMED, CANCELLED, COMPLETED, NO_SHOW]
+    Problem:
+      type: object
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string }

@@ -1,0 +1,74 @@
+openapi: 3.0.3
+info:
+  title: SytTech Scheduler - Auth API
+  description: |
+    Autenticacao de clientes. Cobre o ramo "SIM" da decisao
+    "Cliente tem cadastro?" do fluxo principal.
+  version: 1.0.0
+servers:
+  - url: /api/v1
+tags:
+  - name: Auth
+paths:
+  /auth/login:
+    post:
+      tags: [Auth]
+      operationId: login
+      summary: Autentica o cliente e devolve tokens JWT.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: Autenticacao bem-sucedida.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LoginResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+components:
+  responses:
+    Unauthorized:
+      description: Credenciais invalidas.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    UnprocessableEntity:
+      description: Erro de validacao.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+  schemas:
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, format: password }
+    LoginResponse:
+      type: object
+      required: [accessToken, refreshToken, expiresIn, customer]
+      properties:
+        accessToken: { type: string }
+        refreshToken: { type: string }
+        expiresIn: { type: integer, description: Validade do accessToken em segundos. }
+        tokenType: { type: string, example: Bearer }
+        customer: { $ref: '#/components/schemas/AuthenticatedCustomer' }
+    AuthenticatedCustomer:
+      type: object
+      required: [id, fullName, email]
+      properties:
+        id: { type: string, format: uuid }
+        fullName: { type: string }
+        email: { type: string, format: email }
+        emailVerified: { type: boolean }
+    Problem:
+      type: object
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string }

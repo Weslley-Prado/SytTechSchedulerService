@@ -1,0 +1,202 @@
+openapi: 3.0.3
+info:
+  title: SytTech Scheduler — Units API
+  description: |
+    Catálogo de unidades (salões), categorias, serviços e profissionais.
+    Cobre os passos de navegação do "Fluxo Principal do Cliente":
+    LANDPAGE → Escolhe unidade → Escolhe categoria → Escolhe serviço → Escolhe profissional.
+  version: 1.0.0
+servers:
+  - url: /api/v1
+tags:
+  - name: Units
+    description: Unidades / salões e seu catálogo de serviços.
+paths:
+  /units:
+    get:
+      tags: [Units]
+      operationId: listUnits
+      summary: Lista unidades ativas.
+      parameters:
+        - $ref: '#/components/parameters/SearchQuery'
+        - name: city
+          in: query
+          schema: { type: string }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: Página de unidades.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnitSummaryPage'
+  /units/{unitId}:
+    get:
+      tags: [Units]
+      operationId: getUnit
+      summary: Detalhe de uma unidade.
+      parameters:
+        - $ref: '#/components/parameters/UnitId'
+      responses:
+        '200':
+          description: Detalhe da unidade.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UnitDetails' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /units/{unitId}/categories:
+    get:
+      tags: [Units]
+      operationId: listCategoriesByUnit
+      summary: Lista categorias de serviços oferecidas pela unidade.
+      parameters:
+        - $ref: '#/components/parameters/UnitId'
+      responses:
+        '200':
+          description: Categorias disponíveis.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Category' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /units/{unitId}/categories/{categoryId}/services:
+    get:
+      tags: [Units]
+      operationId: listServicesByCategory
+      summary: Lista serviços de uma categoria na unidade.
+      parameters:
+        - $ref: '#/components/parameters/UnitId'
+        - name: categoryId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Serviços oferecidos.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Service' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /units/{unitId}/services/{serviceId}/professionals:
+    get:
+      tags: [Units]
+      operationId: listProfessionalsByService
+      summary: Lista profissionais que executam o serviço na unidade.
+      parameters:
+        - $ref: '#/components/parameters/UnitId'
+        - name: serviceId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Profissionais disponíveis para o serviço.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Professional' }
+        '404': { $ref: '#/components/responses/NotFound' }
+components:
+  parameters:
+    UnitId:
+      name: unitId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    SearchQuery:
+      name: q
+      in: query
+      schema: { type: string }
+    Page:
+      name: page
+      in: query
+      schema: { type: integer, minimum: 0, default: 0 }
+    Size:
+      name: size
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+  responses:
+    NotFound:
+      description: Recurso não encontrado.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+  schemas:
+    UnitSummary:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        address: { type: string }
+        city: { type: string }
+        coverImageUrl: { type: string, format: uri }
+    UnitDetails:
+      allOf:
+        - $ref: '#/components/schemas/UnitSummary'
+        - type: object
+          properties:
+            phone: { type: string }
+            email: { type: string, format: email }
+            businessHours:
+              type: array
+              items: { $ref: '#/components/schemas/BusinessHour' }
+    BusinessHour:
+      type: object
+      required: [dayOfWeek, opensAt, closesAt]
+      properties:
+        dayOfWeek:
+          type: string
+          enum: [MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY]
+        opensAt: { type: string, example: "09:00" }
+        closesAt: { type: string, example: "19:00" }
+    UnitSummaryPage:
+      type: object
+      required: [content, page, size, totalElements, totalPages]
+      properties:
+        content:
+          type: array
+          items: { $ref: '#/components/schemas/UnitSummary' }
+        page: { type: integer }
+        size: { type: integer }
+        totalElements: { type: integer, format: int64 }
+        totalPages: { type: integer }
+    Category:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        iconUrl: { type: string, format: uri }
+    Service:
+      type: object
+      required: [id, name, durationMinutes, price, currency]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        description: '{ type: string }'
+        durationMinutes: { type: integer, minimum: 1 }
+        price: { type: number, format: double, minimum: 0 }
+        currency: { type: string, example: BRL }
+    Professional:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        avatarUrl: { type: string, format: uri }
+        rating: { type: number, format: float, minimum: 0, maximum: 5 }
+    Problem:
+      type: object
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string }
+
