@@ -179,7 +179,7 @@ components:
       properties:
         id: { type: string, format: uuid }
         name: { type: string }
-        description: '{ type: string }'
+        description: { type: string }
         durationMinutes: { type: integer, minimum: 1 }
         price: { type: number, format: double, minimum: 0 }
         currency: { type: string, example: BRL }

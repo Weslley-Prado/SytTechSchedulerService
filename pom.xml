@@ -30,6 +30,8 @@
 		<java.version>25</java.version>
 		<spring-modulith.version>2.0.5</spring-modulith.version>
 		<mapstruct.version>1.6.3</mapstruct.version>
+		<openapi-generator.version>7.12.0</openapi-generator.version>
+		<jackson-databind-nullable.version>0.2.6</jackson-databind-nullable.version>
 
 		<!-- ═══ Code Quality Plugins ═══ -->
 		<spotless-maven-plugin.version>2.46.1</spotless-maven-plugin.version>
@@ -103,6 +105,13 @@
 			<artifactId>mapstruct</artifactId>
 			<version>${mapstruct.version}</version>
 		</dependency>
+		<!-- Necessário pelos modelos gerados pelo openapi-generator quando há
+		     propriedades com `nullable: true` (gera campos JsonNullable<T>). -->
+		<dependency>
+			<groupId>org.openapitools</groupId>
+			<artifactId>jackson-databind-nullable</artifactId>
+			<version>${jackson-databind-nullable.version}</version>
+		</dependency>
 
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -136,14 +145,95 @@
 		<plugins>
 			<!-- ═══════════════════════════════════════════════════════════════
 			     OpenAPI Generator — contract-first
-			     Sem execuções por enquanto. Ao adicionar o primeiro contrato em
-			     src/main/resources/contract/input/<feature>-api.yaml, declare
-			     aqui um <execution> seguindo o padrão do syttechportal.
+			     Gera as interfaces de Controller + DTOs a partir dos YAMLs em
+			     src/main/resources/contract/input/. Cada execução isola
+			     apiPackage e modelPackage por contrato.
+			     Saída: target/generated-sources/openapi (adicionada ao
+			     build-helper-maven-plugin automaticamente pelo generator).
 			     ═══════════════════════════════════════════════════════════════ -->
 			<plugin>
 				<groupId>org.openapitools</groupId>
 				<artifactId>openapi-generator-maven-plugin</artifactId>
-				<version>7.12.0</version>
+				<version>${openapi-generator.version}</version>
+				<executions>
+					<execution>
+						<id>generate-units-api</id>
+						<phase>generate-sources</phase>
+						<goals><goal>generate</goal></goals>
+						<configuration>
+							<inputSpec>${project.basedir}/src/main/resources/contract/input/units-api.yaml</inputSpec>
+							<apiPackage>com.syttech.scheduler.adapter.input.web.units.api</apiPackage>
+							<modelPackage>com.syttech.scheduler.adapter.input.web.units.dto</modelPackage>
+						</configuration>
+					</execution>
+					<execution>
+						<id>generate-availability-api</id>
+						<phase>generate-sources</phase>
+						<goals><goal>generate</goal></goals>
+						<configuration>
+							<inputSpec>${project.basedir}/src/main/resources/contract/input/availability-api.yaml</inputSpec>
+							<apiPackage>com.syttech.scheduler.adapter.input.web.availability.api</apiPackage>
+							<modelPackage>com.syttech.scheduler.adapter.input.web.availability.dto</modelPackage>
+						</configuration>
+					</execution>
+					<execution>
+						<id>generate-appointments-api</id>
+						<phase>generate-sources</phase>
+						<goals><goal>generate</goal></goals>
+						<configuration>
+							<inputSpec>${project.basedir}/src/main/resources/contract/input/appointments-api.yaml</inputSpec>
+							<apiPackage>com.syttech.scheduler.adapter.input.web.appointments.api</apiPackage>
+							<modelPackage>com.syttech.scheduler.adapter.input.web.appointments.dto</modelPackage>
+						</configuration>
+					</execution>
+					<execution>
+						<id>generate-customers-api</id>
+						<phase>generate-sources</phase>
+						<goals><goal>generate</goal></goals>
+						<configuration>
+							<inputSpec>${project.basedir}/src/main/resources/contract/input/customers-api.yaml</inputSpec>
+							<apiPackage>com.syttech.scheduler.adapter.input.web.customers.api</apiPackage>
+							<modelPackage>com.syttech.scheduler.adapter.input.web.customers.dto</modelPackage>
+						</configuration>
+					</execution>
+					<execution>
+						<id>generate-auth-api</id>
+						<phase>generate-sources</phase>
+						<goals><goal>generate</goal></goals>
+						<configuration>
+							<inputSpec>${project.basedir}/src/main/resources/contract/input/auth-api.yaml</inputSpec>
+							<apiPackage>com.syttech.scheduler.adapter.input.web.auth.api</apiPackage>
+							<modelPackage>com.syttech.scheduler.adapter.input.web.auth.dto</modelPackage>
+						</configuration>
+					</execution>
+				</executions>
+				<!-- Configuração compartilhada por todas as execuções acima. -->
+				<configuration>
+					<generatorName>spring</generatorName>
+					<library>spring-boot</library>
+					<output>${project.build.directory}/generated-sources/openapi</output>
+					<generateApiTests>false</generateApiTests>
+					<generateModelTests>false</generateModelTests>
+					<generateApiDocumentation>false</generateApiDocumentation>
+					<generateModelDocumentation>false</generateModelDocumentation>
+					<generateSupportingFiles>false</generateSupportingFiles>
+					<configOptions>
+						<interfaceOnly>true</interfaceOnly>
+						<useSpringBoot3>true</useSpringBoot3>
+						<useJakartaEe>true</useJakartaEe>
+						<useTags>true</useTags>
+						<skipDefaultInterface>true</skipDefaultInterface>
+						<openApiNullable>true</openApiNullable>
+						<useBeanValidation>true</useBeanValidation>
+						<performBeanValidation>true</performBeanValidation>
+						<dateLibrary>java8</dateLibrary>
+						<serializationLibrary>jackson</serializationLibrary>
+						<hideGenerationTimestamp>true</hideGenerationTimestamp>
+						<documentationProvider>springdoc</documentationProvider>
+						<annotationLibrary>swagger2</annotationLibrary>
+						<useOptional>false</useOptional>
+					</configOptions>
+				</configuration>
 			</plugin>
 
 			<plugin>
