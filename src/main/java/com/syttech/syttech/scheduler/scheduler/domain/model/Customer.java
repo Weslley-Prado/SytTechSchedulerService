@@ -11,4 +11,6 @@ public record Customer(
         String phone,
         String passwordHash,
         boolean emailVerified,
+        String emailVerifyToken,
+        OffsetDateTime emailVerifyExpiresAt,
         OffsetDateTime createdAt) {}

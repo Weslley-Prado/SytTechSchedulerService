@@ -18,6 +18,8 @@ public interface UnitCatalogPort {
 
     Optional<Unit> findUnitById(UUID unitId);
 
+    Optional<Service> findServiceById(UUID serviceId);
+
     List<Category> findCategoriesByUnit(UUID unitId);
 
     List<Service> findServicesByCategory(UUID unitId, UUID categoryId);

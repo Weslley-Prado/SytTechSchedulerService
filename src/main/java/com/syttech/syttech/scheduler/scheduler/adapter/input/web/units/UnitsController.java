@@ -9,47 +9,76 @@ import com.syttech.syttech.scheduler.scheduler.adapter.input.web.units.dto.Profe
 import com.syttech.syttech.scheduler.scheduler.adapter.input.web.units.dto.Service;
 import com.syttech.syttech.scheduler.scheduler.adapter.input.web.units.dto.UnitDetails;
 import com.syttech.syttech.scheduler.scheduler.adapter.input.web.units.dto.UnitSummaryPage;
+import com.syttech.syttech.scheduler.scheduler.domain.command.ListUnitsQuery;
+import com.syttech.syttech.scheduler.scheduler.ports.in.GetUnitUseCase;
+import com.syttech.syttech.scheduler.scheduler.ports.in.ListCategoriesByUnitUseCase;
+import com.syttech.syttech.scheduler.scheduler.ports.in.ListProfessionalsByServiceUseCase;
+import com.syttech.syttech.scheduler.scheduler.ports.in.ListServicesByCategoryUseCase;
+import com.syttech.syttech.scheduler.scheduler.ports.in.ListUnitsUseCase;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 
-/**
- * Stub controller for UnitsApi. Replace each method body with a call to the corresponding use case
- * (ports.in) as soon as it is implemented.
- */
 @RestController
 public class UnitsController implements UnitsApi {
 
-    @Override
-    public ResponseEntity<UnitDetails> getUnit(final UUID unitId) {
-        // TODO: delegate to the matching use case (ports.in).
-        throw new UnsupportedOperationException("getUnit not implemented yet");
-    }
+    private final ListUnitsUseCase listUnits;
+    private final GetUnitUseCase getUnit;
+    private final ListCategoriesByUnitUseCase listCategories;
+    private final ListServicesByCategoryUseCase listServices;
+    private final ListProfessionalsByServiceUseCase listProfessionals;
 
-    @Override
-    public ResponseEntity<List<Category>> listCategoriesByUnit(final UUID unitId) {
-        // TODO: delegate to the matching use case (ports.in).
-        throw new UnsupportedOperationException("listCategoriesByUnit not implemented yet");
-    }
-
-    @Override
-    public ResponseEntity<List<Professional>> listProfessionalsByService(
-            final UUID unitId, final UUID serviceId) {
-        // TODO: delegate to the matching use case (ports.in).
-        throw new UnsupportedOperationException("listProfessionalsByService not implemented yet");
-    }
-
-    @Override
-    public ResponseEntity<List<Service>> listServicesByCategory(
-            final UUID unitId, final UUID categoryId) {
-        // TODO: delegate to the matching use case (ports.in).
-        throw new UnsupportedOperationException("listServicesByCategory not implemented yet");
+    public UnitsController(
+            final ListUnitsUseCase listUnits,
+            final GetUnitUseCase getUnit,
+            final ListCategoriesByUnitUseCase listCategories,
+            final ListServicesByCategoryUseCase listServices,
+            final ListProfessionalsByServiceUseCase listProfessionals) {
+        this.listUnits = listUnits;
+        this.getUnit = getUnit;
+        this.listCategories = listCategories;
+        this.listServices = listServices;
+        this.listProfessionals = listProfessionals;
     }
 
     @Override
     public ResponseEntity<UnitSummaryPage> listUnits(
             final String q, final String city, final Integer page, final Integer size) {
-        // TODO: delegate to the matching use case (ports.in).
-        throw new UnsupportedOperationException("listUnits not implemented yet");
+        var result =
+                listUnits.listUnits(
+                        new ListUnitsQuery(
+                                q, city, page == null ? 0 : page, size == null ? 20 : size));
+        return ResponseEntity.ok(UnitsMapper.toPage(result));
+    }
+
+    @Override
+    public ResponseEntity<UnitDetails> getUnit(final UUID unitId) {
+        return ResponseEntity.ok(UnitsMapper.toDetails(getUnit.getUnit(unitId)));
+    }
+
+    @Override
+    public ResponseEntity<List<Category>> listCategoriesByUnit(final UUID unitId) {
+        return ResponseEntity.ok(
+                listCategories.listCategoriesByUnit(unitId).stream()
+                        .map(UnitsMapper::toCategory)
+                        .toList());
+    }
+
+    @Override
+    public ResponseEntity<List<Service>> listServicesByCategory(
+            final UUID unitId, final UUID categoryId) {
+        return ResponseEntity.ok(
+                listServices.listServicesByCategory(unitId, categoryId).stream()
+                        .map(UnitsMapper::toService)
+                        .toList());
+    }
+
+    @Override
+    public ResponseEntity<List<Professional>> listProfessionalsByService(
+            final UUID unitId, final UUID serviceId) {
+        return ResponseEntity.ok(
+                listProfessionals.listProfessionalsByService(unitId, serviceId).stream()
+                        .map(UnitsMapper::toProfessional)
+                        .toList());
     }
 }

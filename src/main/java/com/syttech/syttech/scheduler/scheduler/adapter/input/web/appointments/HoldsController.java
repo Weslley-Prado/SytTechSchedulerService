@@ -5,26 +5,33 @@ import java.util.UUID;
 import com.syttech.syttech.scheduler.scheduler.adapter.input.web.appointments.api.HoldsApi;
 import com.syttech.syttech.scheduler.scheduler.adapter.input.web.appointments.dto.CreateHoldRequest;
 import com.syttech.syttech.scheduler.scheduler.adapter.input.web.appointments.dto.HoldResponse;
+import com.syttech.syttech.scheduler.scheduler.ports.in.CreateHoldUseCase;
+import com.syttech.syttech.scheduler.scheduler.ports.in.ReleaseHoldUseCase;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 
-/**
- * Stub controller for HoldsApi. Replace each method body with a call to the corresponding use case
- * (ports.in) as soon as it is implemented.
- */
 @RestController
 public class HoldsController implements HoldsApi {
 
+    private final CreateHoldUseCase createHold;
+    private final ReleaseHoldUseCase releaseHold;
+
+    public HoldsController(
+            final CreateHoldUseCase createHold, final ReleaseHoldUseCase releaseHold) {
+        this.createHold = createHold;
+        this.releaseHold = releaseHold;
+    }
+
     @Override
     public ResponseEntity<HoldResponse> createHold(final CreateHoldRequest createHoldRequest) {
-        // TODO: delegate to the matching use case (ports.in).
-        throw new UnsupportedOperationException("createHold not implemented yet");
+        var hold = createHold.createHold(AppointmentsMapper.toCommand(createHoldRequest));
+        return ResponseEntity.status(201).body(AppointmentsMapper.toResponse(hold));
     }
 
     @Override
     public ResponseEntity<Void> releaseHold(final UUID holdId) {
-        // TODO: delegate to the matching use case (ports.in).
-        throw new UnsupportedOperationException("releaseHold not implemented yet");
+        releaseHold.releaseHold(holdId);
+        return ResponseEntity.noContent().build();
     }
 }

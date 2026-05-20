@@ -4,7 +4,7 @@ info:
   description: |
     Autenticacao de clientes. Cobre o ramo "SIM" da decisao
     "Cliente tem cadastro?" do fluxo principal.
-  version: 1.0.0
+  version: 1.1.0
 servers:
   - url: /api/v1
 tags:
@@ -28,10 +28,27 @@ paths:
               schema: { $ref: '#/components/schemas/LoginResponse' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '422': { $ref: '#/components/responses/UnprocessableEntity' }
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      operationId: refreshToken
+      summary: Troca um refresh token valido por um novo par access+refresh.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RefreshTokenRequest' }
+      responses:
+        '200':
+          description: Tokens renovados.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LoginResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
 components:
   responses:
     Unauthorized:
-      description: Credenciais invalidas.
+      description: Credenciais invalidas ou token invalido/expirado.
       content:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Problem' }
@@ -47,6 +64,11 @@ components:
       properties:
         email: { type: string, format: email }
         password: { type: string, format: password }
+    RefreshTokenRequest:
+      type: object
+      required: [refreshToken]
+      properties:
+        refreshToken: { type: string }
     LoginResponse:
       type: object
       required: [accessToken, refreshToken, expiresIn, customer]

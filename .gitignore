@@ -32,3 +32,11 @@ build/
 ### VS Code ###
 .vscode/
 
+
+# Local secrets (Gmail SMTP, DB, etc.) — NUNCA commitar
+.env
+.env.local
+.env.*.local
+
+# Spring local profile (segredos) — NUNCA commitar
+src/main/resources/application-local.properties

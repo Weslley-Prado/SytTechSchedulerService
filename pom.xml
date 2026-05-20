@@ -32,6 +32,7 @@
 		<mapstruct.version>1.6.3</mapstruct.version>
 		<openapi-generator.version>7.12.0</openapi-generator.version>
 		<jackson-databind-nullable.version>0.2.6</jackson-databind-nullable.version>
+		<testcontainers.version>1.21.3</testcontainers.version>
 
 		<!-- ═══ Code Quality Plugins ═══ -->
 		<spotless-maven-plugin.version>2.46.1</spotless-maven-plugin.version>
@@ -96,6 +97,14 @@
 			<scope>runtime</scope>
 		</dependency>
 		<dependency>
+			<groupId>org.springframework.security</groupId>
+			<artifactId>spring-security-crypto</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-mail</artifactId>
+		</dependency>
+		<dependency>
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
 			<optional>true</optional>
@@ -126,6 +135,18 @@
 		<dependency>
 			<groupId>org.springframework.modulith</groupId>
 			<artifactId>spring-modulith-starter-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.testcontainers</groupId>
+			<artifactId>junit-jupiter</artifactId>
+			<version>${testcontainers.version}</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.testcontainers</groupId>
+			<artifactId>postgresql</artifactId>
+			<version>${testcontainers.version}</version>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
@@ -223,7 +244,7 @@
 						<useJakartaEe>true</useJakartaEe>
 						<useTags>true</useTags>
 						<skipDefaultInterface>true</skipDefaultInterface>
-						<openApiNullable>true</openApiNullable>
+						<openApiNullable>false</openApiNullable>
 						<useBeanValidation>true</useBeanValidation>
 						<performBeanValidation>true</performBeanValidation>
 						<dateLibrary>java8</dateLibrary>

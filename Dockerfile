@@ -13,9 +13,10 @@ COPY mvnw ./
 COPY .mvn .mvn
 RUN chmod +x mvnw && ./mvnw dependency:go-offline -B
 
-# Código-fonte + build (os testes ficam para o pipeline CI)
+# Cdigo-fonte + build (os testes ficam para o pipeline CI)
 COPY src src
-RUN ./mvnw package -DskipTests -B
+# -Dmaven.antrun.skip pula o plugin que instala git-hooks (no faz sentido no container).
+RUN ./mvnw package -DskipTests -Dmaven.antrun.skip=true -B
 
 # ── Stage 2: runtime ───────────────────────────────────────────────────────
 FROM eclipse-temurin:25-jre-alpine

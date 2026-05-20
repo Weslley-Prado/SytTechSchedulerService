@@ -1,9 +1,77 @@
+# ════════════════════════════════════════════════════════════════════════════
+# SytTech Scheduler — stack completa (Postgres + App).
+# Uso:
+#   1) cp .env.example .env   →   edite e coloque o app-password do Gmail
+#   2) docker compose up --build
+#   3) acesse http://localhost:8082/actuator/health
+# Dados persistem em volume nomeado (sobrevivem a `down`).
+# Para zerar tudo:  docker compose down -v
+# ════════════════════════════════════════════════════════════════════════════
 services:
   postgres:
-    image: 'postgres:latest'
+    image: postgres:16-alpine
+    container_name: syttech-pg
+    restart: unless-stopped
     environment:
-      - 'POSTGRES_DB=mydatabase'
-      - 'POSTGRES_PASSWORD=secret'
-      - 'POSTGRES_USER=myuser'
+      POSTGRES_DB: ${POSTGRES_DB:-syttechscheduler}
+      POSTGRES_USER: ${POSTGRES_USER:-myuser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secret}
     ports:
-      - '5432'
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - syttech-pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-myuser} -d ${POSTGRES_DB:-syttechscheduler}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: syttech-app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "${APP_PORT:-8082}:8082"
+    environment:
+      # ── perfil ────────────────────────────────────────────────────────────
+      SPRING_PROFILES_ACTIVE: dev
+      # ── banco (entre containers usa o nome do serviço como host) ──────────
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-syttechscheduler}
+      DB_USERNAME: ${POSTGRES_USER:-myuser}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-secret}
+      # ── JPA + Flyway (dev): schema versionado + seed de demo ─────────────
+      # Hibernate só valida; quem cria/evolui o schema é o Flyway.
+      # locations inclui db/seed → carrega R__demo_seed.sql (massa de demo).
+      SPRING_JPA_HIBERNATE_DDL_AUTO: validate
+      SPRING_FLYWAY_ENABLED: "true"
+      SPRING_FLYWAY_LOCATIONS: classpath:db/migration,classpath:db/seed
+      SPRING_FLYWAY_BASELINE_ON_MIGRATE: "true"
+      SPRING_FLYWAY_BASELINE_VERSION: "0"
+      # ── JWT ───────────────────────────────────────────────────────────────
+      SYTTECH_JWT_SECRET: ${SYTTECH_JWT_SECRET:-dev-secret-change-me-change-me-change-me-change-me}
+      SYTTECH_JWT_TTL: ${SYTTECH_JWT_TTL:-3600}
+      # ── E-mail (Gmail SMTP) ───────────────────────────────────────────────
+      SYTTECH_EMAIL_ENABLED: ${SYTTECH_EMAIL_ENABLED:-false}
+      SYTTECH_EMAIL_FROM: ${SYTTECH_EMAIL_FROM:-no-reply@syttech.local}
+      SYTTECH_APP_BASE_URL: ${SYTTECH_APP_BASE_URL:-http://localhost:8082}
+      SPRING_MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
+      SPRING_MAIL_PORT: ${MAIL_PORT:-587}
+      SPRING_MAIL_USERNAME: ${MAIL_USERNAME:-}
+      SPRING_MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-true}
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: ${MAIL_SMTP_STARTTLS:-true}
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8082/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+
+volumes:
+  syttech-pg-data:
+    name: syttech-pg-data
