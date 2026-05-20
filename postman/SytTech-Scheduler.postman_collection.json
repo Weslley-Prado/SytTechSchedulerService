@@ -1,0 +1,901 @@
+{
+  "info": {
+    "name": "SytTech Scheduler — Full Test Suite",
+    "_postman_id": "9b1c0f6e-3a7d-4d8c-9b3f-1e6a5b2c0001",
+    "description": "Collection completa para o **SytTech Scheduler Service**.\n\n## Como usar\n1. Suba a stack: `docker compose up -d --build`\n2. Importe esta collection no Postman.\n3. Selecione o environment **SytTech Local** (criado automaticamente — ver variáveis na aba Variables).\n4. Rode a pasta **00 - Health & Setup** primeiro, depois **01 - Auth Flow**, **02 - Catálogo**, etc.\n5. Use o **Collection Runner** para rodar tudo em sequência (`Run collection` → `Run SytTech Scheduler`).\n\n## Encadeamento\nOs requests escrevem variáveis nas seguintes etapas:\n- `register-customer` → grava `customerId`\n- `login` → grava `accessToken`, `refreshToken`\n- `list-units` → grava `unitId`\n- `list-categories` → grava `categoryId`\n- `list-services` → grava `serviceId`\n- `list-professionals` → grava `professionalId`\n- `availability` → grava `slotStart`, `slotEnd`\n- `create-hold` → grava `holdId`\n- `confirm-appointment` → grava `appointmentId`, `appointmentCode`\n\n## Variáveis\n- `baseUrl` (default `http://localhost:8082`)\n- `email` / `password` (default `weslleytest+{{$timestamp}}@gmail.com`)\n- Tokens e IDs são preenchidos automaticamente pelos scripts.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8082", "type": "string" },
+    { "key": "email", "value": "", "type": "string" },
+    { "key": "password", "value": "Senha@1234", "type": "string" },
+    { "key": "accessToken", "value": "", "type": "string" },
+    { "key": "refreshToken", "value": "", "type": "string" },
+    { "key": "customerId", "value": "", "type": "string" },
+    { "key": "unitId", "value": "", "type": "string" },
+    { "key": "categoryId", "value": "", "type": "string" },
+    { "key": "serviceId", "value": "", "type": "string" },
+    { "key": "professionalId", "value": "", "type": "string" },
+    { "key": "slotStart", "value": "", "type": "string" },
+    { "key": "slotEnd", "value": "", "type": "string" },
+    { "key": "holdId", "value": "", "type": "string" },
+    { "key": "appointmentId", "value": "", "type": "string" },
+    { "key": "appointmentCode", "value": "", "type": "string" },
+    { "key": "verifyToken", "value": "", "type": "string" }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Gera um e-mail único por execução se ainda não existir",
+          "if (!pm.collectionVariables.get('email')) {",
+          "    const stamp = Date.now();",
+          "    pm.collectionVariables.set('email', `weslleytest+${stamp}@example.com`);",
+          "}"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "00 - Health & Setup",
+      "item": [
+        {
+          "name": "GET /actuator/health",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/actuator/health", "host": ["{{baseUrl}}"], "path": ["actuator", "health"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('status=UP', () => pm.expect(pm.response.json().status).to.eql('UP'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "01 - Customers & Email Verification",
+      "item": [
+        {
+          "name": "POST /customers — registrar (happy path → dispara e-mail real)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Weslley Teste\",\n  \"email\": \"{{email}}\",\n  \"phone\": \"+5511999990000\",\n  \"password\": \"{{password}}\",\n  \"acceptTerms\": true\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/customers", "host": ["{{baseUrl}}"], "path": ["customers"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "const j = pm.response.json();",
+                  "pm.test('contém id', () => pm.expect(j.id).to.be.a('string'));",
+                  "pm.collectionVariables.set('customerId', j.id);",
+                  "console.log('customerId =', j.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /customers — erro 422 (sem acceptTerms)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Sem Aceite\",\n  \"email\": \"bad+{{$timestamp}}@example.com\",\n  \"phone\": \"+5511999990001\",\n  \"password\": \"Senha@1234\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/customers", "host": ["{{baseUrl}}"], "path": ["customers"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('422 Unprocessable', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /customers — erro 409 (e-mail duplicado)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Duplicado\",\n  \"email\": \"{{email}}\",\n  \"phone\": \"+5511999990002\",\n  \"password\": \"Senha@1234\",\n  \"acceptTerms\": true\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/customers", "host": ["{{baseUrl}}"], "path": ["customers"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('409 ou 422 (depende do mapeamento)', () => pm.expect([409, 422]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /customers/verify-email — token inválido (404/422)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{ \"token\": \"token-invalido-xxx\" }" },
+            "url": { "raw": "{{baseUrl}}/customers/verify-email", "host": ["{{baseUrl}}"], "path": ["customers", "verify-email"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('erro 4xx', () => pm.expect(pm.response.code).to.be.oneOf([400, 404, 422]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /customers/verify-email — happy path (preencha {{verifyToken}})",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{ \"token\": \"{{verifyToken}}\" }" },
+            "url": { "raw": "{{baseUrl}}/customers/verify-email", "host": ["{{baseUrl}}"], "path": ["customers", "verify-email"] },
+            "description": "Pegue o token do e-mail recebido (link `/auth/verify?token=...`) e coloque na variável `verifyToken` da collection antes de rodar."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.collectionVariables.get('verifyToken')) {",
+                  "    pm.test('204 No Content', () => pm.response.to.have.status(204));",
+                  "} else {",
+                  "    pm.test.skip('skip: defina verifyToken antes');",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02 - Auth (Login & Refresh)",
+      "item": [
+        {
+          "name": "POST /auth/login — happy path",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}" },
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('tokens presentes', () => {",
+                  "    pm.expect(j.accessToken).to.be.a('string');",
+                  "    pm.expect(j.refreshToken).to.be.a('string');",
+                  "    pm.expect(j.tokenType).to.eql('Bearer');",
+                  "});",
+                  "pm.collectionVariables.set('accessToken', j.accessToken);",
+                  "pm.collectionVariables.set('refreshToken', j.refreshToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /auth/login — 401 senha errada",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"errada\"\n}" },
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('401', () => pm.response.to.have.status(401));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /auth/login — 422 campos faltando",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{}" },
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('422', () => pm.response.to.have.status(422));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /auth/refresh — happy path",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{ \"refreshToken\": \"{{refreshToken}}\" }" },
+            "url": { "raw": "{{baseUrl}}/auth/refresh", "host": ["{{baseUrl}}"], "path": ["auth", "refresh"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('novo accessToken', () => pm.expect(j.accessToken).to.be.a('string'));",
+                  "pm.collectionVariables.set('accessToken', j.accessToken);",
+                  "pm.collectionVariables.set('refreshToken', j.refreshToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /auth/refresh — 401 token inválido",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{ \"refreshToken\": \"abc.def.ghi\" }" },
+            "url": { "raw": "{{baseUrl}}/auth/refresh", "host": ["{{baseUrl}}"], "path": ["auth", "refresh"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('401', () => pm.response.to.have.status(401));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /auth/refresh — 422 campo faltando",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{}" },
+            "url": { "raw": "{{baseUrl}}/auth/refresh", "host": ["{{baseUrl}}"], "path": ["auth", "refresh"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('422', () => pm.response.to.have.status(422));"]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 - Catálogo (Units / Categories / Services / Professionals)",
+      "item": [
+        {
+          "name": "GET /units — listar unidades",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/units", "host": ["{{baseUrl}}"], "path": ["units"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "const arr = Array.isArray(j) ? j : (j.units || j.content || []);",
+                  "if (arr.length) { pm.collectionVariables.set('unitId', arr[0].id); console.log('unitId =', arr[0].id); }",
+                  "pm.test('lista de unidades', () => pm.expect(arr).to.be.an('array'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /units/{unitId} — detalhe",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/units/{{unitId}}", "host": ["{{baseUrl}}"], "path": ["units", "{{unitId}}"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('unitId')) { pm.test.skip('sem unitId'); return; }",
+                  "pm.test('200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /units/{unitId} — 404 inexistente",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/units/00000000-0000-0000-0000-000000000000", "host": ["{{baseUrl}}"], "path": ["units", "00000000-0000-0000-0000-000000000000"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('404', () => pm.response.to.have.status(404));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /units/{unitId}/categories",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/units/{{unitId}}/categories", "host": ["{{baseUrl}}"], "path": ["units", "{{unitId}}", "categories"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('unitId')) { pm.test.skip('sem unitId'); return; }",
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "const arr = Array.isArray(j) ? j : (j.categories || j.content || []);",
+                  "if (arr.length) { pm.collectionVariables.set('categoryId', arr[0].id); console.log('categoryId =', arr[0].id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /units/{unitId}/categories/{categoryId}/services",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/units/{{unitId}}/categories/{{categoryId}}/services",
+              "host": ["{{baseUrl}}"],
+              "path": ["units", "{{unitId}}", "categories", "{{categoryId}}", "services"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('categoryId')) { pm.test.skip('sem categoryId'); return; }",
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "const arr = Array.isArray(j) ? j : (j.services || j.content || []);",
+                  "if (arr.length) { pm.collectionVariables.set('serviceId', arr[0].id); console.log('serviceId =', arr[0].id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /units/{unitId}/services/{serviceId}/professionals",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/units/{{unitId}}/services/{{serviceId}}/professionals",
+              "host": ["{{baseUrl}}"],
+              "path": ["units", "{{unitId}}", "services", "{{serviceId}}", "professionals"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('serviceId')) { pm.test.skip('sem serviceId'); return; }",
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "const arr = Array.isArray(j) ? j : (j.professionals || j.content || []);",
+                  "if (arr.length) { pm.collectionVariables.set('professionalId', arr[0].id); console.log('professionalId =', arr[0].id); }"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04 - Availability",
+      "item": [
+        {
+          "name": "GET /availability — slots dos próximos 7 dias",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const now = new Date();",
+                  "const from = new Date(now.getTime() + 60*60*1000);",
+                  "const to = new Date(now.getTime() + 7*24*60*60*1000);",
+                  "pm.collectionVariables.set('availabilityFrom', from.toISOString());",
+                  "pm.collectionVariables.set('availabilityTo', to.toISOString());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('serviceId')) { pm.test.skip('sem serviceId'); return; }",
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "const slots = j.slots || [];",
+                  "pm.test('slots é array', () => pm.expect(slots).to.be.an('array'));",
+                  "if (slots.length) {",
+                  "    pm.collectionVariables.set('slotStart', slots[0].start);",
+                  "    pm.collectionVariables.set('slotEnd', slots[0].end);",
+                  "    if (slots[0].professionalId) pm.collectionVariables.set('professionalId', slots[0].professionalId);",
+                  "    console.log('slot escolhido:', slots[0]);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/availability?unitId={{unitId}}&serviceId={{serviceId}}&from={{availabilityFrom}}&to={{availabilityTo}}&timezone=America/Sao_Paulo",
+              "host": ["{{baseUrl}}"],
+              "path": ["availability"],
+              "query": [
+                { "key": "unitId", "value": "{{unitId}}" },
+                { "key": "serviceId", "value": "{{serviceId}}" },
+                { "key": "from", "value": "{{availabilityFrom}}" },
+                { "key": "to", "value": "{{availabilityTo}}" },
+                { "key": "timezone", "value": "America/Sao_Paulo" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /availability — 422 sem parâmetros obrigatórios",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/availability", "host": ["{{baseUrl}}"], "path": ["availability"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('400/422', () => pm.expect(pm.response.code).to.be.oneOf([400, 422]));"]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "05 - Appointment Lifecycle (Hold → Confirm → Reschedule → Cancel)",
+      "item": [
+        {
+          "name": "POST /appointments/holds — criar pré-reserva",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"unitId\": \"{{unitId}}\",\n  \"serviceId\": \"{{serviceId}}\",\n  \"professionalId\": \"{{professionalId}}\",\n  \"start\": \"{{slotStart}}\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/appointments/holds", "host": ["{{baseUrl}}"], "path": ["appointments", "holds"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('slotStart')) { pm.test.skip('rode availability antes'); return; }",
+                  "pm.test('201', () => pm.response.to.have.status(201));",
+                  "const j = pm.response.json();",
+                  "pm.collectionVariables.set('holdId', j.holdId);",
+                  "console.log('holdId =', j.holdId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /appointments/holds — 409 horário ocupado",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"unitId\": \"{{unitId}}\",\n  \"serviceId\": \"{{serviceId}}\",\n  \"professionalId\": \"{{professionalId}}\",\n  \"start\": \"{{slotStart}}\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/appointments/holds", "host": ["{{baseUrl}}"], "path": ["appointments", "holds"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('409 Conflict (slot já reservado)', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /appointments — confirmar (cria appointment)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Idempotency-Key", "value": "{{$guid}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"holdId\": \"{{holdId}}\",\n  \"customer\": {\n    \"fullName\": \"Weslley Teste\",\n    \"email\": \"{{email}}\",\n    \"phone\": \"+5511999990000\",\n    \"notes\": \"primeira vez\"\n  }\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/appointments", "host": ["{{baseUrl}}"], "path": ["appointments"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('holdId')) { pm.test.skip('sem holdId'); return; }",
+                  "pm.test('201', () => pm.response.to.have.status(201));",
+                  "const j = pm.response.json();",
+                  "pm.collectionVariables.set('appointmentId', j.appointmentId);",
+                  "pm.collectionVariables.set('appointmentCode', j.code);",
+                  "console.log('appointmentId =', j.appointmentId, '| code =', j.code);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /appointments — 410 hold já consumido/expirado",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Idempotency-Key", "value": "{{$guid}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"holdId\": \"{{holdId}}\",\n  \"customer\": {\n    \"fullName\": \"Weslley Teste\",\n    \"email\": \"{{email}}\",\n    \"phone\": \"+5511999990000\"\n  }\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/appointments", "host": ["{{baseUrl}}"], "path": ["appointments"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('410 Gone ou 404', () => pm.expect(pm.response.code).to.be.oneOf([404, 410, 422]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /appointments/by-code/{code}",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/appointments/by-code/{{appointmentCode}}", "host": ["{{baseUrl}}"], "path": ["appointments", "by-code", "{{appointmentCode}}"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('appointmentCode')) { pm.test.skip('sem code'); return; }",
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('code coincide', () => pm.expect(j.code).to.eql(pm.collectionVariables.get('appointmentCode')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /appointments/by-code/XXX — 404",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/appointments/by-code/ZZZZ-9999", "host": ["{{baseUrl}}"], "path": ["appointments", "by-code", "ZZZZ-9999"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('404', () => pm.response.to.have.status(404));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /appointments/{id}/resend-code — 202",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/appointments/{{appointmentId}}/resend-code",
+              "host": ["{{baseUrl}}"],
+              "path": ["appointments", "{{appointmentId}}", "resend-code"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('appointmentId')) { pm.test.skip('sem appointmentId'); return; }",
+                  "pm.test('202 ou 429', () => pm.expect(pm.response.code).to.be.oneOf([202, 429]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH /appointments/{id}/reschedule — novo horário",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const newStart = new Date(Date.now() + 2*24*60*60*1000);",
+                  "newStart.setUTCHours(13, 0, 0, 0);",
+                  "pm.collectionVariables.set('newStart', newStart.toISOString());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('appointmentId')) { pm.test.skip('sem appointmentId'); return; }",
+                  "pm.test('200 ou 409', () => pm.expect(pm.response.code).to.be.oneOf([200, 409, 422]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{ \"start\": \"{{newStart}}\" }" },
+            "url": {
+              "raw": "{{baseUrl}}/appointments/{{appointmentId}}/reschedule",
+              "host": ["{{baseUrl}}"],
+              "path": ["appointments", "{{appointmentId}}", "reschedule"]
+            }
+          }
+        },
+        {
+          "name": "DELETE /appointments/{id} — cancelar",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/appointments/{{appointmentId}}", "host": ["{{baseUrl}}"], "path": ["appointments", "{{appointmentId}}"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('appointmentId')) { pm.test.skip('sem appointmentId'); return; }",
+                  "pm.test('204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "DELETE /appointments/{id} — 404/422 idempotente",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/appointments/{{appointmentId}}", "host": ["{{baseUrl}}"], "path": ["appointments", "{{appointmentId}}"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('404 ou 422 (já cancelado)', () => pm.expect(pm.response.code).to.be.oneOf([404, 422]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "06 - Holds (release isolada)",
+      "item": [
+        {
+          "name": "POST /appointments/holds — segundo hold (para liberar)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Usa um slot 1h após o anterior para evitar conflito.",
+                  "const base = pm.collectionVariables.get('slotStart');",
+                  "if (base) {",
+                  "    const d = new Date(base);",
+                  "    d.setHours(d.getHours() + 24);",
+                  "    pm.collectionVariables.set('slotStartAlt', d.toISOString());",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('slotStartAlt')) { pm.test.skip('sem slot'); return; }",
+                  "if (pm.response.code === 201) {",
+                  "    pm.collectionVariables.set('holdIdAlt', pm.response.json().holdId);",
+                  "}",
+                  "pm.test('201 ou 409', () => pm.expect(pm.response.code).to.be.oneOf([201, 409]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"unitId\": \"{{unitId}}\",\n  \"serviceId\": \"{{serviceId}}\",\n  \"professionalId\": \"{{professionalId}}\",\n  \"start\": \"{{slotStartAlt}}\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/appointments/holds", "host": ["{{baseUrl}}"], "path": ["appointments", "holds"] }
+          }
+        },
+        {
+          "name": "DELETE /appointments/holds/{holdId} — liberar",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/appointments/holds/{{holdIdAlt}}", "host": ["{{baseUrl}}"], "path": ["appointments", "holds", "{{holdIdAlt}}"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('holdIdAlt')) { pm.test.skip('sem holdIdAlt'); return; }",
+                  "pm.test('204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "DELETE /appointments/holds/{holdId} — 404 inexistente",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/appointments/holds/00000000-0000-0000-0000-000000000000",
+              "host": ["{{baseUrl}}"],
+              "path": ["appointments", "holds", "00000000-0000-0000-0000-000000000000"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('404 ou 204', () => pm.expect(pm.response.code).to.be.oneOf([204, 404]));"]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "07 - Customer Self-Service",
+      "item": [
+        {
+          "name": "GET /customers/me/appointments — autenticado",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/customers/me/appointments", "host": ["{{baseUrl}}"], "path": ["customers", "me", "appointments"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('accessToken')) { pm.test.skip('faça login antes'); return; }",
+                  "pm.test('200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /customers/me/appointments — 401 sem token",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/customers/me/appointments", "host": ["{{baseUrl}}"], "path": ["customers", "me", "appointments"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('401 ou 403', () => pm.expect(pm.response.code).to.be.oneOf([401, 403]));"]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+
